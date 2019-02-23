@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+    app-db:
+        image: "postgres:9.5.10"
+        restart: always
+        container_name: app-db
+        environment:
+          - POSTGRES_PASSWORD=python_ni_app
+          - POSTGRES_DB=python_ni_app
+        ports:
+          - "5490:5432"
+
+    app-admin:
+        build: .
+        image: python_ni
+        stdin_open: true
+        tty: true
+        restart: unless-stopped
+        container_name: app-admin
+        env_file:
+          - ./development.env
+        depends_on:
+          - app-db
+          - app-redis
+          - app-rabbitmq
+        links:
+          - "app-db:db"
+          - "app-redis:redis_db"
+          - "app-rabbitmq:rabbitmq"
+        volumes:
+          - ./python_ni_app:/var/www/python_ni_app
+          - ./admin/conf.d:/etc/supervisor/conf.d
+        command: python manage.py runserver 0.0.0.0:8000
+        ports:
+          - "8000:8000"
+
+    app-redis:
+        image: redis
+        container_name: app-redis
+        environment:
+          - ALLOW_EMPTY_PASSWORD=yes
+        ports:
+          - "6379:6379"
+
+    app-rabbitmq:
+        image: rabbitmq:3.6
+        container_name: app-rabbitmq
+        environment:
+          - RABBITMQ_DEFAULT_USER=rabbitmq_user
+          - RABBITMQ_DEFAULT_PASS=rabbitmq_pass
+          - RABBITMQ_DEFAULT_VHOST=python_ni_app
+        volumes:
+          - ./watch-rabbitmq.sh:/var/lib/rabbitmq/watch-rabbitmq.sh
+        ports:
+          - "5675:5672"
+          - "15675:15672"

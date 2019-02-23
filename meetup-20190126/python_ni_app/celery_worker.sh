@@ -1,0 +1,1 @@
+celery -A python_ni_app worker -l info
